@@ -4,21 +4,17 @@ import time
 import psycopg2
 from redis import Redis
 
-in_redis_time = 0
-in_postgres_time = 0
-out_redis_time = 0
-out_postgres_time = 0
 redis_list = []
 postgres_list = []
 cars = ["Audi", "BMW", "Chevrolet", "Kia", "Hyundai", "Lada", "Renault", "Nissan", "Toyota", "Honda",
         "Volkswagen", "Ford", "Chevrolet", "Mazda", "Subaru"]
 auto_nums = ["A", "B", "C", "E", "H", "K", "M", "O", "P", "T", "X", "Y"]
-districts = ['Центральный', 'Северный', 'Северо-Восточный', 'Восточный', 'Юго-Восточный', 'Южный',
-             'Юго-Западный', 'Западный', 'Северо-Западный']
+districts = ['Central', 'Northern', 'Northeastern', 'Eastern', 'Southeastern',
+             'Southern', 'Southwestern', 'Western', 'Northwestern']
 
 
 def create_taxi_redis(taxi_amount: int):
-    r = Redis(host='localhost', port='6379', decode_responses=True)
+    r = Redis(host='localhost', port=6379, decode_responses=True)
     start_time = time.time()
     global redis_time
 
@@ -27,7 +23,7 @@ def create_taxi_redis(taxi_amount: int):
 
         for i in range(taxi_amount):
             district = random.choice(districts)
-            car = random.choice(cars) + '--' + str(random.choice(auto_nums)) + str(random.randint(100, 999)) \
+            car = random.choice(cars) + ' ' + str(random.choice(auto_nums)) + str(random.randint(100, 999)) \
                   + str(random.choice(auto_nums)) + str(random.choice(auto_nums)) + str(random.randint(33, 190))
 
             coordinate_x = 55 + (random.randint(1, 10) / 10) + (random.randint(1, 100) / 100)
@@ -97,13 +93,12 @@ def check_select_postgres():
 def check_select_redis():
     global out_redis_time
     start_time = time.time()
-    r = Redis(host='localhost', port='6379', decode_responses=True)
+    r = Redis(host='localhost', port=6379, decode_responses=True)
     keys = r.keys('*')
     count = 0
     for key in keys:
         count += 1
         string = "\n".join(map(str, r.zrange(key, 0, -1)))
-
         with open('redis.txt', 'a', encoding='utf-8') as file:
             file.write(string)
 
@@ -111,11 +106,12 @@ def check_select_redis():
     end_time = time.time()
     out_redis_time = end_time - start_time
     print("Затраченное время на вывод данных из Redis: ", out_redis_time, "Количество строк :", count)
+    return
+
 
 if __name__ == '__main__':
-
-    create_taxi_redis(100)
-    create_taxi_postgres(100)
+    create_taxi_redis(5000)
+    create_taxi_postgres(5000)
     check_select_postgres()
     check_select_redis()
     total_in = postgres_time / redis_time
