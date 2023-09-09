@@ -8,7 +8,8 @@ in_redis_time = 0
 in_postgres_time = 0
 out_redis_time = 0
 out_postgres_time = 0
-
+redis_list = []
+postgres_list = []
 cars = ["Audi", "BMW", "Chevrolet", "Kia", "Hyundai", "Lada", "Renault", "Nissan", "Toyota", "Honda",
         "Volkswagen", "Ford", "Chevrolet", "Mazda", "Subaru"]
 auto_nums = ["A", "B", "C", "E", "H", "K", "M", "O", "P", "T", "X", "Y"]
@@ -22,7 +23,7 @@ def create_taxi_redis(taxi_amount: int):
     global redis_time
 
     with r.pipeline() as pipe:
-        pipe.multi()  # Start a transaction
+        pipe.multi()
 
         for i in range(taxi_amount):
             district = random.choice(districts)
@@ -32,11 +33,9 @@ def create_taxi_redis(taxi_amount: int):
             coordinate_x = 55 + (random.randint(1, 10) / 10) + (random.randint(1, 100) / 100)
             coordinate_y = 37 + (random.randint(1, 10) / 10) + (random.randint(1, 100) / 100)
 
-            pipe.hset(car, 'coordinate_x', str(coordinate_x))  # Set coordinate_x field
-            pipe.hset(car, 'coordinate_y', str(coordinate_y))  # Set coordinate_y field
-            pipe.sadd(district, car.encode('utf-8'))  # Encode district name
+            pipe.geoadd(district, [coordinate_x, coordinate_y, car], nx=False)
 
-        pipe.execute()  # Execute the transaction
+        pipe.execute()
 
     end_time = time.time()
     redis_time = end_time - start_time
@@ -84,6 +83,9 @@ def check_select_postgres():
     count = 0
     for row in rows:
         count += 1
+        string = "\n".join(map(str, row))
+        with open('postgres.txt', 'a', encoding='utf-8') as file:
+            file.write(string)
 
     cursor.close()
     conn.close()
@@ -100,19 +102,23 @@ def check_select_redis():
     count = 0
     for key in keys:
         count += 1
+        string = "\n".join(map(str, r.zrange(key, 0, -1)))
+
+        with open('redis.txt', 'a', encoding='utf-8') as file:
+            file.write(string)
 
     r.close()
     end_time = time.time()
     out_redis_time = end_time - start_time
     print("Затраченное время на вывод данных из Redis: ", out_redis_time, "Количество строк :", count)
 
+if __name__ == '__main__':
 
-create_taxi_redis(25000)
-create_taxi_postgres(25000)
-
-check_select_postgres()
-check_select_redis()
-total_in = postgres_time / redis_time
-total_out = out_postgres_time / out_redis_time
-print(f"Ввод данных в REDIS быстрее чем в POSTGRES в {round((total_in), 4)} раз")
-print(f"Вывод данных из REDIS быстрее чем из POSTGRES в {round((total_out), 4)} раз")
+    create_taxi_redis(100)
+    create_taxi_postgres(100)
+    check_select_postgres()
+    check_select_redis()
+    total_in = postgres_time / redis_time
+    total_out = out_postgres_time / out_redis_time
+    print(f"Ввод данных в REDIS быстрее чем в POSTGRES в {round((total_in), 4)} раз")
+    print(f"Вывод данных из REDIS быстрее чем из POSTGRES в {round((total_out), 4)} раз")
